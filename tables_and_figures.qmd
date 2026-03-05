@@ -1,0 +1,568 @@
+---
+title: "Education, Child Marriage, and Heterogeneous Wage Returns in Nigeria"
+format:
+  pdf:
+    documentclass: article
+    papersize: a4
+    geometry: "margin=2.5cm"
+    fontsize: 11pt
+    toc: false
+    number-sections: false
+    keep-tex: true
+    latex-auto-install: true
+    header-includes: |
+      \usepackage{booktabs}
+      \usepackage{longtable}
+      \usepackage{array}
+      \usepackage{multirow}
+      \usepackage{float}
+      \usepackage{graphicx}
+      \usepackage{xcolor}
+      \usepackage{threeparttable}
+      \usepackage{helvet}
+      \renewcommand{\familydefault}{\sfdefault}
+      \usepackage{caption}
+      \captionsetup{labelfont=bf, font=small, skip=8pt, justification=centering, singlelinecheck=false}
+      \floatplacement{table}{!htbp}
+      \floatplacement{figure}{!htbp}
+      \setcounter{secnumdepth}{0}
+      \author{Hernando Grueso \and William Rudgard \and Ritapriya Bandyopadhyay \and Chris Desmond \and Brendan Maughan-Brown \and Lucie Cluver}
+      \date{February 2026}
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(tidyverse)
+library(modelsummary)
+library(sampleSelection)
+library(kableExtra)
+library(patchwork)
+
+tidy.heck_wrap   <- function(x, ...) x$tidy_df
+glance.heck_wrap <- function(x, ...) x$glance_df
+
+load("outputs/analysis_results.RData")
+
+nat <- results_national
+nth <- results_north
+
+if (is.null(nat$df_work)) {
+  nat$df_work <- nat$df_seq %>% filter(has_wage_job == 1 & !is.na(ln_wage_final))
+  nth$df_work <- nth$df_seq %>% filter(has_wage_job == 1 & !is.na(ln_wage_final))
+}
+
+ms_stars <- c('*' = 0.1, '**' = 0.05, '***' = 0.01)
+
+gof_compact <- tribble(~raw, ~clean, ~fmt, "nobs", "N", 0, "r.squared", "R2", 3)
+gof_probit <- tribble(~raw, ~clean, ~fmt, "nobs", "Observations", 0)
+
+cm_probit_slide <- c(
+  "years_c" = "Years of Schooling", "years_c2" = "Years Sq.",
+  "exp_c" = "Experience", "exp_c2" = "Experience Sq.",
+  "child_marriage" = "Child Marriage", "is_rural" = "Rural"
+)
+rows_p <- tribble(~term, ~`Pr(Wage Work)`, "State FE", "Yes", "Parent Education", "Yes")
+cm_lev <- c("edu_primary" = "Primary", "edu_secondary" = "Secondary",
+            "edu_higher" = "Higher Ed", "exp_c" = "Experience",
+            "exp_c2" = "Experience Sq.", "child_marriage" = "Child Marriage")
+cm_lit <- c("is_literate" = "Literate", "exp_c" = "Experience",
+            "exp_c2" = "Experience Sq.", "child_marriage" = "Child Marriage")
+
+kb <- function(tbl, sz = 9) {
+  tbl %>% kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = sz, full_width = FALSE
+  )
+}
+
+note_ols <- "Source: NLSS 2018-19. Women aged 18-64 in wage employment. Survey weights applied. Schooling and experience are mean-centred. Standard errors in parentheses. *p<0.1, **p<0.05, ***p<0.01."
+note_linear <- "Source: NLSS 2018-19. Women aged 18-64 in wage employment. Survey weights applied. Standard errors in parentheses. *p<0.1, **p<0.05, ***p<0.01."
+note_probit <- "Source: NLSS 2018-19. All women aged 18-64 with non-missing covariates. Probit includes schooling (+ sq.), experience (+ sq.), child marriage, urban/rural, parental education (factors), and state FE. Standard errors in parentheses. *p<0.1, **p<0.05, ***p<0.01."
+note_cf <- "Outcome: Log Annual Wage. Treatment: Years of Schooling. 4,000 trees. Source: NLSS 2018-19."
+
+var_labels <- c(
+  "child_marriage" = "Child Marriage", "years_c" = "Years of Schooling",
+  "years_c2" = "Years of Schooling Sq.", "exp_c" = "Experience",
+  "exp_c2" = "Experience Sq.", "is_rural" = "Rural",
+  "experience" = "Experience", "age" = "Age",
+  "father_edu" = "Father's Education", "mother_edu" = "Mother's Education",
+  "mean.forest.prediction" = "Mean Forest Prediction",
+  "differential.forest.prediction" = "Differential Forest Prediction"
+)
+relabel <- function(x) ifelse(x %in% names(var_labels), var_labels[x], x)
+
+desc_col <- function(df) {
+  fmt_ms <- function(x) sprintf("%.2f (%.2f)", mean(x, na.rm=T), sd(x, na.rm=T))
+  fmt_pct <- function(x) sprintf("%.1f", mean(x, na.rm=T) * 100)
+  vals <- c(fmt_ms(df$ln_wage_final), fmt_ms(df$years_of_schooling),
+            fmt_ms(df$age), fmt_ms(df$experience),
+            fmt_pct(df$child_marriage), fmt_pct(df$is_rural),
+            fmt_pct(df$is_literate), fmt_pct(df$currently_married))
+  rel <- df %>% count(religion_fac) %>% mutate(pct = n/sum(n)*100)
+  islam_pct <- sum(rel$pct[as.character(rel$religion_fac) == "1"], na.rm=T)
+  christian_pct <- sum(rel$pct[as.character(rel$religion_fac) == "2"], na.rm=T)
+  vals <- c(vals, sprintf("%.1f", islam_pct), sprintf("%.1f", christian_pct),
+            sprintf("%.1f", 100 - islam_pct - christian_pct))
+  f_num <- as.numeric(as.character(df$father_edu_fac))
+  vals <- c(vals, sprintf("%.1f", mean(f_num == 0, na.rm=T)*100),
+            sprintf("%.1f", mean(f_num %in% 1:2, na.rm=T)*100),
+            sprintf("%.1f", mean(f_num >= 3, na.rm=T)*100))
+  m_num <- as.numeric(as.character(df$mother_edu_fac))
+  vals <- c(vals, sprintf("%.1f", mean(m_num == 0, na.rm=T)*100),
+            sprintf("%.1f", mean(m_num %in% 1:2, na.rm=T)*100),
+            sprintf("%.1f", mean(m_num >= 3, na.rm=T)*100))
+  sec <- df %>% count(sector_fac) %>% mutate(pct = n/sum(n)*100)
+  vals <- c(vals, sprintf("%.1f", sum(sec$pct[as.character(sec$sector_fac)=="1"], na.rm=T)),
+            sprintf("%.1f", sum(sec$pct[as.character(sec$sector_fac)=="0"], na.rm=T)))
+  c(vals, format(nrow(df), big.mark=","))
+}
+
+desc_vars <- c("Log annual wage", "Years of schooling", "Age", "Experience",
+  "Child marriage (%)", "Rural (%)", "Literate (%)", "Currently married (%)",
+  "Religion: Islam (%)", "Religion: Christianity (%)", "Religion: Other (%)",
+  "Father edu: None (%)", "Father edu: Primary (%)", "Father edu: Secondary+ (%)",
+  "Mother edu: None (%)", "Mother edu: Primary (%)", "Mother edu: Secondary+ (%)",
+  "Sector: Urban (%)", "Sector: Rural (%)", "N")
+```
+
+<!-- ================================================================== -->
+<!-- TABLES 1-23                                                        -->
+<!-- ================================================================== -->
+
+\newpage
+
+```{r}
+tab1 <- tibble(Variable = desc_vars,
+               National = desc_col(nat$df_work),
+               `N. Nigeria` = desc_col(nth$df_work))
+names(tab1)[2] <- paste0("National (N=", format(nrow(nat$df_work), big.mark=","), ")")
+names(tab1)[3] <- paste0("N. Nigeria (N=", format(nrow(nth$df_work), big.mark=","), ")")
+
+tab1 %>%
+  kbl(booktabs = TRUE, caption = "Descriptive Statistics -- Wage Earners") %>%
+  kb(sz = 8) %>%
+  pack_rows("Continuous: Mean (SD)", 1, 4) %>%
+  pack_rows("Binary (%)", 5, 8) %>%
+  pack_rows("Religion (%)", 9, 11) %>%
+  pack_rows("Father education (%)", 12, 14) %>%
+  pack_rows("Mother education (%)", 15, 17) %>%
+  pack_rows("Sector (%)", 18, 19) %>%
+  footnote(general = "Source: NLSS 2018-19. Women aged 18-64 in wage employment. Survey weights applied.",
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+nat$sample_flow %>%
+  kbl(booktabs = TRUE, caption = "Sample Construction -- National",
+      format.args = list(big.mark = ",")) %>%
+  kb(sz = 9)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  nat$models_quad, stars = ms_stars,
+  coef_map = nat$cm_quadratic, gof_map = nat$gof_map,
+  add_rows = nat$rows_quad,
+  title = "National -- Quadratic Mincer", output = "kableExtra"
+) %>% kb(sz = 8) %>%
+  footnote(general = note_ols, general_title = "Note: ",
+           footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  nat$models_lin, stars = ms_stars,
+  coef_map = nat$cm_linear, gof_map = nat$gof_map,
+  add_rows = nat$rows_lin,
+  title = "National -- Linear Specification", output = "kableExtra"
+) %>% kb(sz = 8) %>%
+  footnote(general = note_linear, general_title = "Note: ",
+           footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("By Level" = nat$m_lev), stars = ms_stars,
+  coef_map = cm_lev, gof_map = gof_compact,
+  title = "Returns by Education Level -- National", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("Omitted: No education. State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("Literacy" = nat$m_lit), stars = ms_stars,
+  coef_map = cm_lit, gof_map = gof_compact,
+  title = "Returns to Literacy -- National", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+if (!is.null(nat$probit)) {
+  modelsummary(
+    list("Pr(Wage Work)" = nat$probit), stars = ms_stars,
+    coef_map = cm_probit_slide, gof_map = gof_probit,
+    add_rows = rows_p,
+    title = "Probit: Pr(Wage Employment) -- National", output = "kableExtra"
+  ) %>% kb(sz = 9) %>%
+    footnote(general = note_probit, general_title = "Note: ",
+             footnote_as_chunk = TRUE, threeparttable = TRUE)
+}
+```
+
+\newpage
+
+```{r}
+if (!is.null(nat$probit_me)) {
+  me_df_nat <- nat$probit_me %>%
+    select(factor, AME, SE, p) %>%
+    mutate(AME = round(AME, 4),
+           SE = ifelse(is.na(SE), "---", sprintf("%.4f", SE)),
+           p = case_when(is.na(p) ~ "---", p < 0.001 ~ "< 0.001", TRUE ~ sprintf("%.3f", p))) %>%
+    rename(Variable = factor) %>%
+    mutate(Variable = relabel(Variable))
+
+  me_df_nat %>%
+    kbl(booktabs = TRUE, caption = "Average Marginal Effects on Pr(Wage Work) -- National") %>%
+    kb(sz = 9) %>%
+    row_spec(which(me_df_nat$Variable == "Child Marriage"), bold = TRUE) %>%
+    footnote(general = paste0(note_probit, " AME via marginaleffects package."),
+             general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+}
+```
+
+\newpage
+
+```{r}
+nat$ate_df %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Average Treatment Effect -- National") %>%
+  kb(sz = 9) %>%
+  footnote(general = note_cf,
+           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\newpage
+
+```{r}
+nat$calib_df %>%
+  mutate(Term = relabel(Term)) %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Calibration Test -- National") %>%
+  kb(sz = 9) %>%
+  footnote(general = note_cf,
+           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\newpage
+
+```{r}
+nat$imp_df %>%
+  mutate(Variable = relabel(Variable)) %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Variable Importance -- National") %>%
+  kb(sz = 9) %>%
+  footnote(general = note_cf,
+           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\newpage
+
+```{r}
+nth$sample_flow %>%
+  kbl(booktabs = TRUE, caption = "Sample Construction -- Northern Nigeria",
+      format.args = list(big.mark = ",")) %>%
+  kb(sz = 9)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  nth$models_quad, stars = ms_stars,
+  coef_map = nth$cm_quadratic, gof_map = nth$gof_map,
+  add_rows = nth$rows_quad,
+  title = "Northern Nigeria -- Quadratic Mincer", output = "kableExtra"
+) %>% kb(sz = 8) %>%
+  footnote(general = note_ols, general_title = "Note: ",
+           footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  nth$models_lin, stars = ms_stars,
+  coef_map = nth$cm_linear, gof_map = nth$gof_map,
+  add_rows = nth$rows_lin,
+  title = "Northern Nigeria -- Linear Specification", output = "kableExtra"
+) %>% kb(sz = 8) %>%
+  footnote(general = note_linear, general_title = "Note: ",
+           footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("By Level" = nth$m_lev), stars = ms_stars,
+  coef_map = cm_lev, gof_map = gof_compact,
+  title = "Returns by Education Level -- Northern Nigeria", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("Omitted: No education. State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("Literacy" = nth$m_lit), stars = ms_stars,
+  coef_map = cm_lit, gof_map = gof_compact,
+  title = "Returns to Literacy -- Northern Nigeria", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+if (!is.null(nth$probit)) {
+  modelsummary(
+    list("Pr(Wage Work)" = nth$probit), stars = ms_stars,
+    coef_map = cm_probit_slide, gof_map = gof_probit,
+    add_rows = rows_p,
+    title = "Probit: Pr(Wage Employment) -- Northern Nigeria", output = "kableExtra"
+  ) %>% kb(sz = 9) %>%
+    footnote(general = note_probit, general_title = "Note: ",
+             footnote_as_chunk = TRUE, threeparttable = TRUE)
+}
+```
+
+\newpage
+
+```{r}
+if (!is.null(nth$probit_me)) {
+  me_df <- nth$probit_me %>%
+    select(factor, AME, SE, p) %>%
+    mutate(AME = round(AME, 4),
+           SE = ifelse(is.na(SE), "---", sprintf("%.4f", SE)),
+           p = case_when(is.na(p) ~ "---", p < 0.001 ~ "< 0.001", TRUE ~ sprintf("%.3f", p))) %>%
+    rename(Variable = factor) %>%
+    mutate(Variable = relabel(Variable))
+
+  me_df %>%
+    kbl(booktabs = TRUE, caption = "Average Marginal Effects on Pr(Wage Work) -- Northern Nigeria") %>%
+    kb(sz = 9) %>%
+    row_spec(which(me_df$Variable == "Child Marriage"), bold = TRUE) %>%
+    footnote(general = paste0(note_probit, " AME via marginaleffects package."),
+             general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+}
+```
+
+\newpage
+
+```{r}
+nth$ate_df %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Average Treatment Effect -- Northern Nigeria") %>%
+  kb(sz = 9) %>%
+  footnote(general = note_cf,
+           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\newpage
+
+```{r}
+nth$calib_df %>%
+  mutate(Term = relabel(Term)) %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Calibration Test -- Northern Nigeria") %>%
+  kb(sz = 9) %>%
+  footnote(general = note_cf,
+           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\newpage
+
+```{r}
+nth$imp_df %>%
+  mutate(Variable = relabel(Variable)) %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Variable Importance -- Northern Nigeria") %>%
+  kb(sz = 9) %>%
+  footnote(general = note_cf,
+           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\newpage
+
+```{r}
+compare <- tibble(
+  Metric = c("Average Return (CF)", "Return Std. Error",
+    "Child Marriage Penalty (OLS+FE)", "Interaction: Years x Child Marriage",
+    "Interaction p-value", "Child Marriage Var. Importance (CF)",
+    "Heckman lambda", "N (wage earners)", "N (selection sample)"),
+  National = c(
+    sprintf("%.1f%%", nat$ate["estimate"] * 100),
+    sprintf("%.3f", nat$ate["std.err"]),
+    sprintf("%.1f%%", coef(nat$models_quad[["+ State FE"]])[["child_marriage"]] * 100),
+    sprintf("%.3f", coef(nat$models_quad[["+ Interaction"]])[["years_c:child_marriage"]]),
+    "< 0.001",
+    sprintf("%.1f%%", nat$imp_df$Importance[nat$imp_df$Variable == "child_marriage"] * 100),
+    "0.822**", format(nrow(nat$plot_cf), big.mark = ","),
+    format(nrow(nat$df_seq), big.mark = ",")),
+  `N. Nigeria` = c(
+    sprintf("%.1f%%", nth$ate["estimate"] * 100),
+    sprintf("%.3f", nth$ate["std.err"]),
+    sprintf("%.1f%%", coef(nth$models_quad[["+ State FE"]])[["child_marriage"]] * 100),
+    sprintf("%.3f", coef(nth$models_quad[["+ Interaction"]])[["years_c:child_marriage"]]),
+    "0.459",
+    sprintf("%.1f%%", nth$imp_df$Importance[nth$imp_df$Variable == "child_marriage"] * 100),
+    "0.217 (n.s.)", format(nrow(nth$plot_cf), big.mark = ","),
+    format(nrow(nth$df_seq), big.mark = ",")))
+
+compare %>%
+  kbl(booktabs = TRUE, caption = "Key Estimates -- National vs. Northern Nigeria") %>%
+  kb(sz = 9) %>%
+  row_spec(5, bold = TRUE) %>%
+  footnote(general = "Source: NLSS 2018-19. CF = Causal Forest. OLS+FE = OLS with state fixed effects. *p<0.1, **p<0.05, ***p<0.01.",
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+tabA1 <- tibble(Variable = desc_vars,
+                National = desc_col(nat$df_seq),
+                `N. Nigeria` = desc_col(nth$df_seq))
+names(tabA1)[2] <- paste0("National (N=", format(nrow(nat$df_seq), big.mark=","), ")")
+names(tabA1)[3] <- paste0("N. Nigeria (N=", format(nrow(nth$df_seq), big.mark=","), ")")
+
+tabA1 %>%
+  kbl(booktabs = TRUE, caption = "Descriptive Statistics -- Full Working-Age Sample") %>%
+  kb(sz = 8) %>%
+  pack_rows("Continuous: Mean (SD)", 1, 4) %>%
+  pack_rows("Binary (%)", 5, 8) %>%
+  pack_rows("Religion (%)", 9, 11) %>%
+  pack_rows("Father education (%)", 12, 14) %>%
+  pack_rows("Mother education (%)", 15, 17) %>%
+  pack_rows("Sector (%)", 18, 19) %>%
+  footnote(general = "Source: NLSS 2018-19. All women aged 18-64 with non-missing covariates (used in first-stage probit). Survey weights applied.",
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+<!-- ================================================================== -->
+<!-- FIGURES 1-10: saved to files then included via LaTeX floats        -->
+<!-- ================================================================== -->
+
+```{r}
+#| include: false
+# Save all figures to files
+fig_theme <- theme(text = element_text(size = 11))
+
+ggsave("outputs/fig01.pdf", nat$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig02.pdf", nat$p_cf_density + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig03.pdf", nat$p_cf_binned + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig04.pdf", nat$p_cf_scatter + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig05.pdf", nth$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig06.pdf", nth$p_cf_density + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig07.pdf", nth$p_cf_binned + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig08.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig09.pdf", nat$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
+ggsave("outputs/fig10.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
+```
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Heterogeneous Returns to Education -- National. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig01.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Distribution of Education Returns -- National. Density of causal forest returns by child marriage status. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig02.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Returns by Level and Marriage Status -- National. Average causal forest returns by education level. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig03.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Predicted Returns vs. Wage Outcomes -- National. Causal forest predicted returns against wage residuals. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig04.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Heterogeneous Returns to Education -- Northern Nigeria. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig05.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Distribution of Education Returns -- Northern Nigeria. Density of causal forest returns by child marriage status. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig06.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Returns by Level and Marriage Status -- Northern Nigeria. Average causal forest returns by education level. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig07.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Predicted Returns vs. Wage Outcomes -- Northern Nigeria. Causal forest predicted returns against wage residuals. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig08.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Returns Across Methods -- National. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig09.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Returns Across Methods -- Northern Nigeria. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig10.pdf}
+\end{figure}
