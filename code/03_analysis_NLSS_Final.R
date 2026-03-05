@@ -131,8 +131,18 @@ glance.heck_wrap <- function(x, ...) x$glance_df
 # ==============================================================================
 # SETUP
 # ==============================================================================
-base_path <- "~/Dropbox/Documents/Laboral/AImpact Lab/Clients/Oxford/data_analysis"
-output_dir <- paste0(base_path, "/outputs/")
+# Use current working directory (project root) — works both locally and from clones.
+# When running with: Rscript code/03_analysis_NLSS_Final.R
+# the working directory should be the project root (where data/ and outputs/ live).
+base_path <- getwd()
+
+# If the script is run from within the code/ directory, go up one level
+if (basename(base_path) == "code") {
+  base_path <- dirname(base_path)
+  setwd(base_path)
+}
+
+output_dir <- file.path(base_path, "outputs")
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
 df_stata <- read_dta(file.path(base_path, "data/NLSS_analysis.dta")) %>%

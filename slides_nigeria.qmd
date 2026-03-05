@@ -1,7 +1,7 @@
 ---
-title: "Estimating Returns to Education for Women in Nigeria"
-subtitle: "Updated Results"
-author: "Hernando Grueso, William Rudgard, Ritapriya Bandyopadhyay, Chris Desmond, Brendan Maughan-Brown, Lucie Cluver"
+title: "Education, Child Marriage, and Heterogeneous Wage Returns among Women in Nigeria"
+subtitle: "Results"
+author: "Hernando Grueso, Ritapriya Bandyopadhyay, Chris Desmond, Brendan Maughan-Brown, Lucie Cluver, William Rudgard"
 date: today
 date-format: "DD/MM/YYYY"
 format:
@@ -731,10 +731,3 @@ tabA1 %>%
   footnote(general = "Source: NLSS 2018-19. All women aged 18-64 with non-missing covariates (used in first-stage probit). Survey weights applied.",
            general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
 ```
-
-## Next Steps
-
-1. **Literature**: Add missing papers on returns to education in Nigeria and West Africa
-2. **Tables**: Copy modelsummary .docx outputs into paper draft
-3. **Methods**: Expand Heckman Selection + Causal Forest discussion
-4. **Policy**: Refine recommendations based on regional heterogeneity findings

@@ -1,5 +1,5 @@
 ---
-title: "Education, Child Marriage, and Heterogeneous Wage Returns in Nigeria"
+title: "Education, Child Marriage, and Heterogeneous Wage Returns among Women in Nigeria"
 format:
   pdf:
     documentclass: article
@@ -26,7 +26,7 @@ format:
       \floatplacement{table}{!htbp}
       \floatplacement{figure}{!htbp}
       \setcounter{secnumdepth}{0}
-      \author{Hernando Grueso \and William Rudgard \and Ritapriya Bandyopadhyay \and Chris Desmond \and Brendan Maughan-Brown \and Lucie Cluver}
+      \author{Hernando Grueso \and Ritapriya Bandyopadhyay \and Chris Desmond \and Brendan Maughan-Brown \and Lucie Cluver \and William Rudgard}
       \date{February 2026}
 execute:
   echo: false
