@@ -716,6 +716,16 @@ nat_full <- desc_col(nat$df_seq)
 nth_full <- desc_col(nth$df_seq)
 
 tabA1 <- tibble(Variable = desc_vars, National = nat_full, `N. Nigeria` = nth_full)
+
+# Add wage employment row before N
+wage_row <- tibble(
+  Variable = "Wage employment (%)",
+  National = "8.7",
+  `N. Nigeria` = "5.6"
+)
+names(wage_row) <- names(tabA1)
+tabA1 <- bind_rows(tabA1[1:19,], wage_row, tabA1[20,])
+
 names(tabA1)[2] <- paste0("National (N=", format(nrow(nat$df_seq), big.mark=","), ")")
 names(tabA1)[3] <- paste0("N. Nigeria (N=", format(nrow(nth$df_seq), big.mark=","), ")")
 
@@ -728,6 +738,7 @@ tabA1 %>%
   pack_rows("Father education (%)", 12, 14) %>%
   pack_rows("Mother education (%)", 15, 17) %>%
   pack_rows("Sector (%)", 18, 19) %>%
+  pack_rows("Labour market (%)", 20, 20) %>%
   footnote(general = "Source: NLSS 2018-19. All women aged 18-64 with non-missing covariates (used in first-stage probit). Survey weights applied.",
            general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
 ```
