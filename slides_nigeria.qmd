@@ -663,6 +663,26 @@ nth$p_panel + theme(text = element_text(size = 11)) +
 ## Table 16: Key Estimates Comparison
 
 ```{r}
+# Extract interaction p-values from the actual models
+nat_int_pval <- summary(nat$models_quad[["+ Interaction"]])$coefficients["years_c:child_marriage", "Pr(>|t|)"]
+nth_int_pval <- summary(nth$models_quad[["+ Interaction"]])$coefficients["years_c:child_marriage", "Pr(>|t|)"]
+
+fmt_p <- function(p) {
+  if (p < 0.001) return("< 0.001")
+  sprintf("%.3f", p)
+}
+
+nat_lambda_row <- nat$models_quad[["Heckman"]]$tidy_df %>% filter(grepl("invMills|lambda", term, ignore.case=TRUE))
+nth_lambda_row <- nth$models_quad[["Heckman"]]$tidy_df %>% filter(grepl("invMills|lambda", term, ignore.case=TRUE))
+
+fmt_lambda <- function(row) {
+  if (nrow(row) == 0) return("n.a.")
+  est <- sprintf("%.3f", row$estimate[1])
+  p <- row$p.value[1]
+  stars <- ifelse(p < 0.01, "***", ifelse(p < 0.05, "**", ifelse(p < 0.1, "*", " (n.s.)")))
+  paste0(est, stars)
+}
+
 compare <- tibble(
   Metric = c(
     "Average Return (CF)",
@@ -680,9 +700,9 @@ compare <- tibble(
     sprintf("%.3f", nat$ate["std.err"]),
     sprintf("%.1f%%", coef(nat$models_quad[["+ State FE"]])[["child_marriage"]] * 100),
     sprintf("%.3f", coef(nat$models_quad[["+ Interaction"]])[["years_c:child_marriage"]]),
-    "< 0.001",
+    fmt_p(nat_int_pval),
     sprintf("%.1f%%", nat$imp_df$Importance[nat$imp_df$Variable == "child_marriage"] * 100),
-    "0.822**",
+    fmt_lambda(nat_lambda_row),
     format(nrow(nat$plot_cf), big.mark = ","),
     format(nrow(nat$df_seq), big.mark = ",")
   ),
@@ -691,9 +711,9 @@ compare <- tibble(
     sprintf("%.3f", nth$ate["std.err"]),
     sprintf("%.1f%%", coef(nth$models_quad[["+ State FE"]])[["child_marriage"]] * 100),
     sprintf("%.3f", coef(nth$models_quad[["+ Interaction"]])[["years_c:child_marriage"]]),
-    "0.459",
+    fmt_p(nth_int_pval),
     sprintf("%.1f%%", nth$imp_df$Importance[nth$imp_df$Variable == "child_marriage"] * 100),
-    "0.217 (n.s.)",
+    fmt_lambda(nth_lambda_row),
     format(nrow(nth$plot_cf), big.mark = ","),
     format(nrow(nth$df_seq), big.mark = ",")
   )
