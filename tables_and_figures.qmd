@@ -27,7 +27,7 @@ format:
       \floatplacement{figure}{!htbp}
       \setcounter{secnumdepth}{0}
       \author{Hernando Grueso \and Ritapriya Bandyopadhyay \and Chris Desmond \and Brendan Maughan-Brown \and Lucie Cluver \and William Rudgard}
-      \date{February 2026}
+      \date{March 2026}
 execute:
   echo: false
   warning: false
@@ -130,7 +130,7 @@ desc_vars <- c("Log annual wage", "Years of schooling", "Age", "Experience",
 ```
 
 <!-- ================================================================== -->
-<!-- TABLES 1-23                                                        -->
+<!-- MAIN TABLES (1-6)                                                  -->
 <!-- ================================================================== -->
 
 \newpage
@@ -158,15 +158,6 @@ tab1 %>%
 \newpage
 
 ```{r}
-nat$sample_flow %>%
-  kbl(booktabs = TRUE, caption = "Sample Construction -- National",
-      format.args = list(big.mark = ",")) %>%
-  kb(sz = 9)
-```
-
-\newpage
-
-```{r}
 modelsummary(
   nat$models_quad, stars = ms_stars,
   coef_map = nat$cm_quadratic, gof_map = nat$gof_map,
@@ -175,120 +166,6 @@ modelsummary(
 ) %>% kb(sz = 8) %>%
   footnote(general = note_ols, general_title = "Note: ",
            footnote_as_chunk = TRUE, threeparttable = TRUE)
-```
-
-\newpage
-
-```{r}
-modelsummary(
-  nat$models_lin, stars = ms_stars,
-  coef_map = nat$cm_linear, gof_map = nat$gof_map,
-  add_rows = nat$rows_lin,
-  title = "National -- Linear Specification", output = "kableExtra"
-) %>% kb(sz = 8) %>%
-  footnote(general = note_linear, general_title = "Note: ",
-           footnote_as_chunk = TRUE, threeparttable = TRUE)
-```
-
-\newpage
-
-```{r}
-modelsummary(
-  list("By Level" = nat$m_lev), stars = ms_stars,
-  coef_map = cm_lev, gof_map = gof_compact,
-  title = "Returns by Education Level -- National", output = "kableExtra"
-) %>% kb(sz = 9) %>%
-  footnote(general = paste0("Omitted: No education. State FE, rural, marital controls included. ", note_ols),
-           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
-```
-
-\newpage
-
-```{r}
-modelsummary(
-  list("Literacy" = nat$m_lit), stars = ms_stars,
-  coef_map = cm_lit, gof_map = gof_compact,
-  title = "Returns to Literacy -- National", output = "kableExtra"
-) %>% kb(sz = 9) %>%
-  footnote(general = paste0("State FE, rural, marital controls included. ", note_ols),
-           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
-```
-
-\newpage
-
-```{r}
-if (!is.null(nat$probit)) {
-  modelsummary(
-    list("Pr(Wage Work)" = nat$probit), stars = ms_stars,
-    coef_map = cm_probit_slide, gof_map = gof_probit,
-    add_rows = rows_p,
-    title = "Probit: Pr(Wage Employment) -- National", output = "kableExtra"
-  ) %>% kb(sz = 9) %>%
-    footnote(general = note_probit, general_title = "Note: ",
-             footnote_as_chunk = TRUE, threeparttable = TRUE)
-}
-```
-
-\newpage
-
-```{r}
-if (!is.null(nat$probit_me)) {
-  me_df_nat <- nat$probit_me %>%
-    select(factor, AME, SE, p) %>%
-    mutate(AME = round(AME, 4),
-           SE = ifelse(is.na(SE), "---", sprintf("%.4f", SE)),
-           p = case_when(is.na(p) ~ "---", p < 0.001 ~ "< 0.001", TRUE ~ sprintf("%.3f", p))) %>%
-    rename(Variable = factor) %>%
-    mutate(Variable = relabel(Variable))
-
-  me_df_nat %>%
-    kbl(booktabs = TRUE, caption = "Average Marginal Effects on Pr(Wage Work) -- National") %>%
-    kb(sz = 9) %>%
-    row_spec(which(me_df_nat$Variable == "Child Marriage"), bold = TRUE) %>%
-    footnote(general = paste0(note_probit, " AME via marginaleffects package."),
-             general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
-}
-```
-
-\newpage
-
-```{r}
-nat$ate_df %>%
-  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Average Treatment Effect -- National") %>%
-  kb(sz = 9) %>%
-  footnote(general = note_cf,
-           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
-```
-
-\newpage
-
-```{r}
-nat$calib_df %>%
-  mutate(Term = relabel(Term)) %>%
-  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Calibration Test -- National") %>%
-  kb(sz = 9) %>%
-  footnote(general = note_cf,
-           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
-```
-
-\newpage
-
-```{r}
-nat$imp_df %>%
-  mutate(Variable = relabel(Variable)) %>%
-  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Variable Importance -- National") %>%
-  kb(sz = 9) %>%
-  footnote(general = note_cf,
-           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
-```
-
-\newpage
-
-```{r}
-nth$sample_flow %>%
-  kbl(booktabs = TRUE, caption = "Sample Construction -- Northern Nigeria",
-      format.args = list(big.mark = ",")) %>%
-  kb(sz = 9)
 ```
 
 \newpage
@@ -307,71 +184,31 @@ modelsummary(
 \newpage
 
 ```{r}
-modelsummary(
-  nth$models_lin, stars = ms_stars,
-  coef_map = nth$cm_linear, gof_map = nth$gof_map,
-  add_rows = nth$rows_lin,
-  title = "Northern Nigeria -- Linear Specification", output = "kableExtra"
-) %>% kb(sz = 8) %>%
-  footnote(general = note_linear, general_title = "Note: ",
-           footnote_as_chunk = TRUE, threeparttable = TRUE)
-```
-
-\newpage
-
-```{r}
-modelsummary(
-  list("By Level" = nth$m_lev), stars = ms_stars,
-  coef_map = cm_lev, gof_map = gof_compact,
-  title = "Returns by Education Level -- Northern Nigeria", output = "kableExtra"
-) %>% kb(sz = 9) %>%
-  footnote(general = paste0("Omitted: No education. State FE, rural, marital controls included. ", note_ols),
-           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
-```
-
-\newpage
-
-```{r}
-modelsummary(
-  list("Literacy" = nth$m_lit), stars = ms_stars,
-  coef_map = cm_lit, gof_map = gof_compact,
-  title = "Returns to Literacy -- Northern Nigeria", output = "kableExtra"
-) %>% kb(sz = 9) %>%
-  footnote(general = paste0("State FE, rural, marital controls included. ", note_ols),
-           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
-```
-
-\newpage
-
-```{r}
-if (!is.null(nth$probit)) {
-  modelsummary(
-    list("Pr(Wage Work)" = nth$probit), stars = ms_stars,
-    coef_map = cm_probit_slide, gof_map = gof_probit,
-    add_rows = rows_p,
-    title = "Probit: Pr(Wage Employment) -- Northern Nigeria", output = "kableExtra"
-  ) %>% kb(sz = 9) %>%
-    footnote(general = note_probit, general_title = "Note: ",
-             footnote_as_chunk = TRUE, threeparttable = TRUE)
-}
-```
-
-\newpage
-
-```{r}
-if (!is.null(nth$probit_me)) {
-  me_df <- nth$probit_me %>%
+# Combined AME table: National and Northern Nigeria side by side
+if (!is.null(nat$probit_me) && !is.null(nth$probit_me)) {
+  ame_nat <- nat$probit_me %>%
     select(factor, AME, SE, p) %>%
-    mutate(AME = round(AME, 4),
-           SE = ifelse(is.na(SE), "---", sprintf("%.4f", SE)),
-           p = case_when(is.na(p) ~ "---", p < 0.001 ~ "< 0.001", TRUE ~ sprintf("%.3f", p))) %>%
-    rename(Variable = factor) %>%
-    mutate(Variable = relabel(Variable))
+    mutate(Variable = relabel(factor),
+           `AME (Nat.)` = sprintf("%.4f", AME),
+           `SE (Nat.)` = ifelse(is.na(SE), "---", sprintf("%.4f", SE)),
+           `p (Nat.)` = case_when(is.na(p) ~ "---", p < 0.001 ~ "< 0.001", TRUE ~ sprintf("%.3f", p)))
 
-  me_df %>%
-    kbl(booktabs = TRUE, caption = "Average Marginal Effects on Pr(Wage Work) -- Northern Nigeria") %>%
-    kb(sz = 9) %>%
-    row_spec(which(me_df$Variable == "Child Marriage"), bold = TRUE) %>%
+  ame_nth <- nth$probit_me %>%
+    select(factor, AME, SE, p) %>%
+    mutate(`AME (N.Nig.)` = sprintf("%.4f", AME),
+           `SE (N.Nig.)` = ifelse(is.na(SE), "---", sprintf("%.4f", SE)),
+           `p (N.Nig.)` = case_when(is.na(p) ~ "---", p < 0.001 ~ "< 0.001", TRUE ~ sprintf("%.3f", p)))
+
+  ame_combined <- ame_nat %>%
+    left_join(ame_nth, by = "factor") %>%
+    select(Variable, `AME (Nat.)`, `SE (Nat.)`, `p (Nat.)`,
+           `AME (N.Nig.)`, `SE (N.Nig.)`, `p (N.Nig.)`)
+
+  ame_combined %>%
+    kbl(booktabs = TRUE, caption = "Average Marginal Effects on Pr(Wage Employment)") %>%
+    kb(sz = 8) %>%
+    add_header_above(c(" " = 1, "National" = 3, "Northern Nigeria" = 3)) %>%
+    row_spec(which(ame_combined$Variable == "Child Marriage"), bold = TRUE) %>%
     footnote(general = paste0(note_probit, " AME via marginaleffects package."),
              general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
 }
@@ -380,9 +217,35 @@ if (!is.null(nth$probit_me)) {
 \newpage
 
 ```{r}
-nth$ate_df %>%
-  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Average Treatment Effect -- Northern Nigeria") %>%
+# Combined CF summary: ATE + Variable Importance for both regions
+ate_combined <- tibble(
+  Region = c("National", "Northern Nigeria"),
+  ATE = c(sprintf("%.3f", nat$ate["estimate"]), sprintf("%.3f", nth$ate["estimate"])),
+  `Std. Error` = c(sprintf("%.3f", nat$ate["std.err"]), sprintf("%.3f", nth$ate["std.err"])),
+  `Return (%)` = c(sprintf("%.1f%%", nat$ate["estimate"]*100), sprintf("%.1f%%", nth$ate["estimate"]*100))
+)
+
+ate_combined %>%
+  kbl(booktabs = TRUE, caption = "Causal Forest: Average Treatment Effect") %>%
   kb(sz = 9) %>%
+  footnote(general = note_cf,
+           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\vspace{1cm}
+
+```{r}
+# Variable importance side by side
+imp_nat <- nat$imp_df %>% mutate(Variable = relabel(Variable)) %>% rename(`Importance (Nat.)` = Importance)
+imp_nth <- nth$imp_df %>% mutate(Variable = relabel(Variable)) %>% rename(`Importance (N.Nig.)` = Importance)
+
+imp_combined <- imp_nat %>%
+  left_join(imp_nth, by = "Variable")
+
+imp_combined %>%
+  kbl(booktabs = TRUE, digits = 3) %>%
+  kb(sz = 9) %>%
+  add_header_above(c("Variable Importance" = 3)) %>%
   footnote(general = note_cf,
            general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
 ```
@@ -390,39 +253,15 @@ nth$ate_df %>%
 \newpage
 
 ```{r}
-nth$calib_df %>%
-  mutate(Term = relabel(Term)) %>%
-  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Calibration Test -- Northern Nigeria") %>%
-  kb(sz = 9) %>%
-  footnote(general = note_cf,
-           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
-```
-
-\newpage
-
-```{r}
-nth$imp_df %>%
-  mutate(Variable = relabel(Variable)) %>%
-  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Variable Importance -- Northern Nigeria") %>%
-  kb(sz = 9) %>%
-  footnote(general = note_cf,
-           general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
-```
-
-\newpage
-
-```{r}
-# Extract interaction p-values from the actual models
+# Extract interaction p-values from models
 nat_int_pval <- summary(nat$models_quad[["+ Interaction"]])$coefficients["years_c:child_marriage", "Pr(>|t|)"]
 nth_int_pval <- summary(nth$models_quad[["+ Interaction"]])$coefficients["years_c:child_marriage", "Pr(>|t|)"]
 
-# Format p-values
 fmt_p <- function(p) {
   if (p < 0.001) return("< 0.001")
   sprintf("%.3f", p)
 }
 
-# Extract Heckman lambda from the wrapped model's tidy_df
 nat_lambda_row <- nat$models_quad[["Heckman"]]$tidy_df %>% filter(grepl("invMills|lambda", term, ignore.case=TRUE))
 nth_lambda_row <- nth$models_quad[["Heckman"]]$tidy_df %>% filter(grepl("invMills|lambda", term, ignore.case=TRUE))
 
@@ -466,6 +305,216 @@ compare %>%
            general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
 ```
 
+<!-- ================================================================== -->
+<!-- MAIN FIGURES (1-4)                                                 -->
+<!-- ================================================================== -->
+
+```{r}
+#| include: false
+fig_theme <- theme(text = element_text(size = 11))
+ggsave("outputs/fig01.pdf", nat$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig02.pdf", nth$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig03.pdf", nat$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
+ggsave("outputs/fig04.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
+# Appendix figures
+ggsave("outputs/fig_a1.pdf", nat$p_cf_density + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig_a2.pdf", nat$p_cf_binned + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig_a3.pdf", nat$p_cf_scatter + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig_a4.pdf", nth$p_cf_density + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig_a5.pdf", nth$p_cf_binned + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+ggsave("outputs/fig_a6.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
+```
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Heterogeneous Returns to Education -- National. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig01.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Heterogeneous Returns to Education -- Northern Nigeria. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig02.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Returns Across Methods -- National. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig03.pdf}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\caption{Returns Across Methods -- Northern Nigeria. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig04.pdf}
+\end{figure}
+
+<!-- ================================================================== -->
+<!-- APPENDIX                                                           -->
+<!-- ================================================================== -->
+
+\newpage
+\appendix
+\setcounter{table}{0}
+\renewcommand{\thetable}{A\arabic{table}}
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{A\arabic{figure}}
+
+\begin{center}
+\Large\textbf{Appendix: Additional Tables and Figures}
+\end{center}
+
+\newpage
+
+```{r}
+nat$sample_flow %>%
+  kbl(booktabs = TRUE, caption = "Sample Construction -- National",
+      format.args = list(big.mark = ",")) %>%
+  kb(sz = 9)
+```
+
+\newpage
+
+```{r}
+nth$sample_flow %>%
+  kbl(booktabs = TRUE, caption = "Sample Construction -- Northern Nigeria",
+      format.args = list(big.mark = ",")) %>%
+  kb(sz = 9)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  nat$models_lin, stars = ms_stars,
+  coef_map = nat$cm_linear, gof_map = nat$gof_map,
+  add_rows = nat$rows_lin,
+  title = "National -- Linear Specification", output = "kableExtra"
+) %>% kb(sz = 8) %>%
+  footnote(general = note_linear, general_title = "Note: ",
+           footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  nth$models_lin, stars = ms_stars,
+  coef_map = nth$cm_linear, gof_map = nth$gof_map,
+  add_rows = nth$rows_lin,
+  title = "Northern Nigeria -- Linear Specification", output = "kableExtra"
+) %>% kb(sz = 8) %>%
+  footnote(general = note_linear, general_title = "Note: ",
+           footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("By Level" = nat$m_lev), stars = ms_stars,
+  coef_map = cm_lev, gof_map = gof_compact,
+  title = "Returns by Education Level -- National", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("Omitted: No education. State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("By Level" = nth$m_lev), stars = ms_stars,
+  coef_map = cm_lev, gof_map = gof_compact,
+  title = "Returns by Education Level -- Northern Nigeria", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("Omitted: No education. State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("Literacy" = nat$m_lit), stars = ms_stars,
+  coef_map = cm_lit, gof_map = gof_compact,
+  title = "Returns to Literacy -- National", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+modelsummary(
+  list("Literacy" = nth$m_lit), stars = ms_stars,
+  coef_map = cm_lit, gof_map = gof_compact,
+  title = "Returns to Literacy -- Northern Nigeria", output = "kableExtra"
+) %>% kb(sz = 9) %>%
+  footnote(general = paste0("State FE, rural, marital controls included. ", note_ols),
+           general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
+```
+
+\newpage
+
+```{r}
+if (!is.null(nat$probit)) {
+  modelsummary(
+    list("Pr(Wage Work)" = nat$probit), stars = ms_stars,
+    coef_map = cm_probit_slide, gof_map = gof_probit,
+    add_rows = rows_p,
+    title = "Probit: Pr(Wage Employment) -- National", output = "kableExtra"
+  ) %>% kb(sz = 9) %>%
+    footnote(general = note_probit, general_title = "Note: ",
+             footnote_as_chunk = TRUE, threeparttable = TRUE)
+}
+```
+
+\newpage
+
+```{r}
+if (!is.null(nth$probit)) {
+  modelsummary(
+    list("Pr(Wage Work)" = nth$probit), stars = ms_stars,
+    coef_map = cm_probit_slide, gof_map = gof_probit,
+    add_rows = rows_p,
+    title = "Probit: Pr(Wage Employment) -- Northern Nigeria", output = "kableExtra"
+  ) %>% kb(sz = 9) %>%
+    footnote(general = note_probit, general_title = "Note: ",
+             footnote_as_chunk = TRUE, threeparttable = TRUE)
+}
+```
+
+\newpage
+
+```{r}
+nat$calib_df %>%
+  mutate(Term = relabel(Term)) %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Calibration Test -- National") %>%
+  kb(sz = 9) %>%
+  footnote(general = note_cf, general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
+\vspace{1cm}
+
+```{r}
+nth$calib_df %>%
+  mutate(Term = relabel(Term)) %>%
+  kbl(booktabs = TRUE, digits = 3) %>%
+  kb(sz = 9) %>%
+  add_header_above(c("Calibration Test -- Northern Nigeria" = 4)) %>%
+  footnote(general = note_cf, general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
+```
+
 \newpage
 
 ```{r}
@@ -473,12 +522,7 @@ tabA1 <- tibble(Variable = desc_vars,
                 National = desc_col(nat$df_seq),
                 `N. Nigeria` = desc_col(nth$df_seq))
 
-# Add wage employment row before N
-wage_row <- tibble(
-  Variable = "Wage employment (%)",
-  National = "8.7",
-  `N. Nigeria` = "5.6"
-)
+wage_row <- tibble(Variable = "Wage employment (%)", National = "8.7", `N. Nigeria` = "5.6")
 names(wage_row) <- names(tabA1)
 tabA1 <- bind_rows(tabA1[1:19,], wage_row, tabA1[20,])
 
@@ -499,41 +543,14 @@ tabA1 %>%
            general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
 ```
 
-<!-- ================================================================== -->
-<!-- FIGURES 1-10: saved to files then included via LaTeX floats        -->
-<!-- ================================================================== -->
-
-```{r}
-#| include: false
-# Save all figures to files
-fig_theme <- theme(text = element_text(size = 11))
-
-ggsave("outputs/fig01.pdf", nat$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig02.pdf", nat$p_cf_density + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig03.pdf", nat$p_cf_binned + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig04.pdf", nat$p_cf_scatter + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig05.pdf", nth$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig06.pdf", nth$p_cf_density + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig07.pdf", nth$p_cf_binned + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig08.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig09.pdf", nat$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
-ggsave("outputs/fig10.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
-```
-
-\newpage
-
-\begin{figure}[H]
-\centering
-\caption{Heterogeneous Returns to Education -- National. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig01.pdf}
-\end{figure}
+<!-- Appendix Figures -->
 
 \newpage
 
 \begin{figure}[H]
 \centering
 \caption{Distribution of Education Returns -- National. Density of causal forest returns by child marriage status. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig02.pdf}
+\includegraphics[width=\textwidth]{outputs/fig_a1.pdf}
 \end{figure}
 
 \newpage
@@ -541,23 +558,15 @@ ggsave("outputs/fig10.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=N
 \begin{figure}[H]
 \centering
 \caption{Returns by Level and Marriage Status -- National. Average causal forest returns by education level. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig03.pdf}
+\includegraphics[width=\textwidth]{outputs/fig_a2.pdf}
 \end{figure}
 
 \newpage
 
 \begin{figure}[H]
 \centering
-\caption{Predicted Returns vs. Wage Outcomes -- National. Causal forest predicted returns against wage residuals. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig04.pdf}
-\end{figure}
-
-\newpage
-
-\begin{figure}[H]
-\centering
-\caption{Heterogeneous Returns to Education -- Northern Nigeria. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig05.pdf}
+\caption{Predicted Returns vs. Wage Outcomes -- National. Causal forest validation. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig_a3.pdf}
 \end{figure}
 
 \newpage
@@ -565,7 +574,7 @@ ggsave("outputs/fig10.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=N
 \begin{figure}[H]
 \centering
 \caption{Distribution of Education Returns -- Northern Nigeria. Density of causal forest returns by child marriage status. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig06.pdf}
+\includegraphics[width=\textwidth]{outputs/fig_a4.pdf}
 \end{figure}
 
 \newpage
@@ -573,29 +582,13 @@ ggsave("outputs/fig10.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=N
 \begin{figure}[H]
 \centering
 \caption{Returns by Level and Marriage Status -- Northern Nigeria. Average causal forest returns by education level. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig07.pdf}
+\includegraphics[width=\textwidth]{outputs/fig_a5.pdf}
 \end{figure}
 
 \newpage
 
 \begin{figure}[H]
 \centering
-\caption{Predicted Returns vs. Wage Outcomes -- Northern Nigeria. Causal forest predicted returns against wage residuals. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig08.pdf}
-\end{figure}
-
-\newpage
-
-\begin{figure}[H]
-\centering
-\caption{Returns Across Methods -- National. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig09.pdf}
-\end{figure}
-
-\newpage
-
-\begin{figure}[H]
-\centering
-\caption{Returns Across Methods -- Northern Nigeria. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig10.pdf}
+\caption{Predicted Returns vs. Wage Outcomes -- Northern Nigeria. Causal forest validation. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig_a6.pdf}
 \end{figure}
