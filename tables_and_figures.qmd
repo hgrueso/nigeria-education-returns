@@ -226,7 +226,7 @@ ate_combined <- tibble(
 )
 
 ate_combined %>%
-  kbl(booktabs = TRUE, caption = "Causal Forest: Average Treatment Effect") %>%
+  kbl(booktabs = TRUE, caption = "Generalized Random Forest: Average Conditional Association") %>%
   kb(sz = 9) %>%
   footnote(general = note_cf,
            general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
@@ -301,7 +301,7 @@ compare %>%
   kbl(booktabs = TRUE, caption = "Key Estimates -- National vs. Northern Nigeria") %>%
   kb(sz = 9) %>%
   row_spec(5, bold = TRUE) %>%
-  footnote(general = "Source: NLSS 2018-19. CF = Causal Forest. OLS+FE = OLS with state fixed effects. *p<0.1, **p<0.05, ***p<0.01.",
+  footnote(general = "Source: NLSS 2018-19. CF = Conditional-Association Forest. OLS+FE = OLS with state fixed effects. *p<0.1, **p<0.05, ***p<0.01.",
            general_title = "Note: ", footnote_as_chunk = TRUE, threeparttable = TRUE)
 ```
 
@@ -312,8 +312,6 @@ compare %>%
 ```{r}
 #| include: false
 fig_theme <- theme(text = element_text(size = 11))
-ggsave("outputs/fig01.pdf", nat$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
-ggsave("outputs/fig02.pdf", nth$p_cf_main + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
 ggsave("outputs/fig03.pdf", nat$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
 ggsave("outputs/fig04.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
 # Appendix figures
@@ -329,23 +327,23 @@ ggsave("outputs/fig_a6.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) 
 
 \begin{figure}[H]
 \centering
-\caption{Heterogeneous Returns to Education -- National. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig01.pdf}
+\caption{Heterogeneous Returns to Education -- National. Generalized random forest estimates by child marriage status, with 95\% confidence bands. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig01_national_ci.pdf}
 \end{figure}
 
 \newpage
 
 \begin{figure}[H]
 \centering
-\caption{Heterogeneous Returns to Education -- Northern Nigeria. Causal forest estimates by child marriage status. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig02.pdf}
+\caption{Heterogeneous Returns to Education -- Northern Nigeria. Generalized random forest estimates by child marriage status, with 95\% confidence bands. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig02_north_ci.pdf}
 \end{figure}
 
 \newpage
 
 \begin{figure}[H]
 \centering
-\caption{Returns Across Methods -- National. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\caption{Returns Across Methods -- National. Marginal returns from quadratic OLS, linear OLS, and generalized random forest (conditional associations). Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig03.pdf}
 \end{figure}
 
@@ -353,7 +351,7 @@ ggsave("outputs/fig_a6.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) 
 
 \begin{figure}[H]
 \centering
-\caption{Returns Across Methods -- Northern Nigeria. Marginal returns from quadratic OLS, linear OLS, and causal forest. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\caption{Returns Across Methods -- Northern Nigeria. Marginal returns from quadratic OLS, linear OLS, and generalized random forest (conditional associations). Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig04.pdf}
 \end{figure}
 
@@ -499,7 +497,7 @@ if (!is.null(nth$probit)) {
 ```{r}
 nat$calib_df %>%
   mutate(Term = relabel(Term)) %>%
-  kbl(booktabs = TRUE, digits = 3, caption = "Causal Forest: Calibration Test -- National") %>%
+  kbl(booktabs = TRUE, digits = 3, caption = "Generalized Random Forest: Calibration Test -- National") %>%
   kb(sz = 9) %>%
   footnote(general = note_cf, general_title = "Note: ", threeparttable = TRUE, footnote_as_chunk = TRUE)
 ```
@@ -549,7 +547,7 @@ tabA1 %>%
 
 \begin{figure}[H]
 \centering
-\caption{Distribution of Education Returns -- National. Density of causal forest returns by child marriage status. Source: NLSS 2018-19.}
+\caption{Distribution of Education Returns -- National. Density of generalized random forest conditional associations by child marriage status. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig_a1.pdf}
 \end{figure}
 
@@ -557,7 +555,7 @@ tabA1 %>%
 
 \begin{figure}[H]
 \centering
-\caption{Returns by Level and Marriage Status -- National. Average causal forest returns by education level. Source: NLSS 2018-19.}
+\caption{Returns by Level and Marriage Status -- National. Average conditional associations (generalized random forest) by education level. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig_a2.pdf}
 \end{figure}
 
@@ -565,7 +563,7 @@ tabA1 %>%
 
 \begin{figure}[H]
 \centering
-\caption{Predicted Returns vs. Wage Outcomes -- National. Causal forest validation. Source: NLSS 2018-19.}
+\caption{Predicted Returns vs. Wage Outcomes -- National. Generalized random forest validation (conditional associations). Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig_a3.pdf}
 \end{figure}
 
@@ -573,7 +571,7 @@ tabA1 %>%
 
 \begin{figure}[H]
 \centering
-\caption{Distribution of Education Returns -- Northern Nigeria. Density of causal forest returns by child marriage status. Source: NLSS 2018-19.}
+\caption{Distribution of Education Returns -- Northern Nigeria. Density of generalized random forest conditional associations by child marriage status. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig_a4.pdf}
 \end{figure}
 
@@ -581,7 +579,7 @@ tabA1 %>%
 
 \begin{figure}[H]
 \centering
-\caption{Returns by Level and Marriage Status -- Northern Nigeria. Average causal forest returns by education level. Source: NLSS 2018-19.}
+\caption{Returns by Level and Marriage Status -- Northern Nigeria. Average conditional associations (generalized random forest) by education level. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig_a5.pdf}
 \end{figure}
 
@@ -589,6 +587,6 @@ tabA1 %>%
 
 \begin{figure}[H]
 \centering
-\caption{Predicted Returns vs. Wage Outcomes -- Northern Nigeria. Causal forest validation. Source: NLSS 2018-19.}
+\caption{Predicted Returns vs. Wage Outcomes -- Northern Nigeria. Generalized random forest validation (conditional associations). Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig_a6.pdf}
 \end{figure}
