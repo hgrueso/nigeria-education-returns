@@ -312,8 +312,8 @@ compare %>%
 ```{r}
 #| include: false
 fig_theme <- theme(text = element_text(size = 11))
-ggsave("outputs/fig03.pdf", nat$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
-ggsave("outputs/fig04.pdf", nth$p_panel + plot_annotation(title=NULL, subtitle=NULL), width=10, height=5.5)
+# Note: fig03/fig04 (OLS + forest comparison with CIs) are produced separately
+# by code/05_add_ols_ci_figures.R -- run that script before rendering this document.
 # Appendix figures
 ggsave("outputs/fig_a1.pdf", nat$p_cf_density + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
 ggsave("outputs/fig_a2.pdf", nat$p_cf_binned + labs(title=NULL, subtitle=NULL) + fig_theme, width=8, height=5.5)
@@ -343,16 +343,16 @@ ggsave("outputs/fig_a6.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) 
 
 \begin{figure}[H]
 \centering
-\caption{Returns Across Methods -- National. Marginal returns from quadratic OLS, linear OLS, and generalized random forest (conditional associations). Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig03.pdf}
+\caption{Returns Across Methods -- National. Marginal returns from quadratic OLS and linear OLS, each with 95\% confidence bands (delta method), plus a generalized random forest smooth (dashed, with band) for comparison. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig03_national_ols_ci.pdf}
 \end{figure}
 
 \newpage
 
 \begin{figure}[H]
 \centering
-\caption{Returns Across Methods -- Northern Nigeria. Marginal returns from quadratic OLS, linear OLS, and generalized random forest (conditional associations). Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
-\includegraphics[width=\textwidth]{outputs/fig04.pdf}
+\caption{Returns Across Methods -- Northern Nigeria. Marginal returns from quadratic OLS and linear OLS, each with 95\% confidence bands (delta method), plus a generalized random forest smooth (dashed, with band) for comparison. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\includegraphics[width=\textwidth]{outputs/fig04_north_ols_ci.pdf}
 \end{figure}
 
 <!-- ================================================================== -->
