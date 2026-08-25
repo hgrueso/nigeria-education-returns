@@ -16,7 +16,7 @@ find_flex <- function(coef_names, candidates, label = "") {
   stop("[", label, "] No candidate matched. All coef names: [", paste(coef_names, collapse=", "), "]")
 }
 
-build_ols_curves <- function(models_quad, models_lin, df_work) {
+build_ols_curves <- function(models_quad, models_lin, df_work, raw_grid) {
   m_quad <- models_quad[["+ Interaction"]]; m_lin <- models_lin[["+ Interaction"]]
   V_quad <- vcov(m_quad); b_quad <- coef(m_quad)
   V_lin  <- vcov(m_lin);  b_lin  <- coef(m_lin)
@@ -36,8 +36,6 @@ build_ols_curves <- function(models_quad, models_lin, df_work) {
 
   quad_is_centered <- grepl("^years_c$", years_q)
   mean_years <- mean(df_work$years_of_schooling, na.rm = TRUE)
-  raw_grid <- seq(quantile(df_work$years_of_schooling, 0.02, na.rm=TRUE),
-                   quantile(df_work$years_of_schooling, 0.98, na.rm=TRUE), length.out = 60)
   S_grid_quad <- if (quad_is_centered) raw_grid - mean_years else raw_grid
 
   quad_curve <- function(g) {
@@ -61,36 +59,39 @@ build_ols_curves <- function(models_quad, models_lin, df_work) {
   bind_rows(quad_curve(0), quad_curve(1), lin_curve(0), lin_curve(1))
 }
 
-build_forest_curve <- function(forest, plot_cf) {
+# Forest curve, evaluated on the SAME clean grid (fixes the jagged-ribbon bug:
+# one smoothed row per grid point per group, not one row per raw observation).
+build_forest_curve <- function(forest, plot_cf, raw_grid) {
   if (is.null(forest)) stop("forest object is NULL for this region")
   pred <- predict(forest, estimate.variance = TRUE)
-  tau_hat <- pred$predictions; se_hat <- sqrt(pred$variance.estimates)
   df <- plot_cf
-  df$estimate <- tau_hat
-  df$ci_lower <- tau_hat - 1.96*se_hat
-  df$ci_upper <- tau_hat + 1.96*se_hat
-  df$group <- ifelse(df$child_marriage==1, "Married before 18", "Not married before 18")
-  df$spec <- "Generalized Random Forest"
-  df %>% select(years_of_schooling, estimate, ci_lower, ci_upper, group, spec)
+  df$tau_hat <- pred$predictions
+  df$se_hat  <- sqrt(pred$variance.estimates)
+  df$group <- ifelse(df$child_marriage == 1, "Married before 18", "Not married before 18")
+
+  smooth_one <- function(g) {
+    sub <- df %>% filter(group == g) %>% arrange(years_of_schooling)
+    loess_est <- loess(tau_hat ~ years_of_schooling, data = sub, span = 0.75)
+    loess_se  <- loess(se_hat  ~ years_of_schooling, data = sub, span = 0.75)
+    est <- as.numeric(predict(loess_est, newdata = data.frame(years_of_schooling = raw_grid)))
+    se  <- as.numeric(predict(loess_se,  newdata = data.frame(years_of_schooling = raw_grid)))
+    tibble(years_of_schooling = raw_grid, estimate = est,
+           ci_lower = est - 1.96 * se, ci_upper = est + 1.96 * se,
+           group = g, spec = "Generalized Random Forest")
+  }
+  bind_rows(smooth_one("Married before 18"), smooth_one("Not married before 18"))
 }
 
 make_combined_figure <- function(region_key, out_prefix) {
   res <- if (region_key == "national") results_national else results_north
-  ols_df <- build_ols_curves(res$models_quad, res$models_lin, res$df_work)
-  forest_df <- build_forest_curve(res$forest, res$plot_cf)
 
-  # Smooth the forest curve per group for a clean line (loess), keep raw CI as ribbon via loess too
-  forest_smooth <- forest_df %>%
-    group_by(group) %>%
-    arrange(years_of_schooling) %>%
-    mutate(estimate_s = predict(loess(estimate ~ years_of_schooling, span = 0.75)),
-           ci_lower_s = predict(loess(ci_lower ~ years_of_schooling, span = 0.75)),
-           ci_upper_s = predict(loess(ci_upper ~ years_of_schooling, span = 0.75))) %>%
-    ungroup() %>%
-    transmute(years_of_schooling, estimate = estimate_s,
-              ci_lower = ci_lower_s, ci_upper = ci_upper_s, group, spec)
+  raw_grid <- seq(quantile(res$df_work$years_of_schooling, 0.02, na.rm=TRUE),
+                   quantile(res$df_work$years_of_schooling, 0.98, na.rm=TRUE), length.out = 60)
 
-  all_df <- bind_rows(ols_df, forest_smooth)
+  ols_df    <- build_ols_curves(res$models_quad, res$models_lin, res$df_work, raw_grid)
+  forest_df <- build_forest_curve(res$forest, res$plot_cf, raw_grid)
+
+  all_df <- bind_rows(ols_df, forest_df) %>% arrange(spec, group, years_of_schooling)
   all_df$spec <- factor(all_df$spec, levels = c("Quadratic OLS", "Linear OLS", "Generalized Random Forest"))
 
   p <- ggplot(all_df, aes(x = years_of_schooling, y = estimate, color = group, fill = group)) +
