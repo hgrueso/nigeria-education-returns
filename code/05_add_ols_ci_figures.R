@@ -2,7 +2,6 @@
 library(ggplot2)
 library(dplyr)
 library(tibble)
-library(grf)
 
 load("outputs/analysis_results.RData")
 
@@ -59,46 +58,22 @@ build_ols_curves <- function(models_quad, models_lin, df_work, raw_grid) {
   bind_rows(quad_curve(0), quad_curve(1), lin_curve(0), lin_curve(1))
 }
 
-# Forest curve, evaluated on the SAME clean grid (fixes the jagged-ribbon bug:
-# one smoothed row per grid point per group, not one row per raw observation).
-build_forest_curve <- function(forest, plot_cf, raw_grid) {
-  if (is.null(forest)) stop("forest object is NULL for this region")
-  pred <- predict(forest, estimate.variance = TRUE)
-  df <- plot_cf
-  df$tau_hat <- pred$predictions
-  df$se_hat  <- sqrt(pred$variance.estimates)
-  df$group <- ifelse(df$child_marriage == 1, "Married before 18", "Not married before 18")
-
-  smooth_one <- function(g) {
-    sub <- df %>% filter(group == g) %>% arrange(years_of_schooling)
-    loess_est <- loess(tau_hat ~ years_of_schooling, data = sub, span = 0.75)
-    loess_se  <- loess(se_hat  ~ years_of_schooling, data = sub, span = 0.75)
-    est <- as.numeric(predict(loess_est, newdata = data.frame(years_of_schooling = raw_grid)))
-    se  <- as.numeric(predict(loess_se,  newdata = data.frame(years_of_schooling = raw_grid)))
-    tibble(years_of_schooling = raw_grid, estimate = est,
-           ci_lower = est - 1.96 * se, ci_upper = est + 1.96 * se,
-           group = g, spec = "Generalized Random Forest")
-  }
-  bind_rows(smooth_one("Married before 18"), smooth_one("Not married before 18"))
-}
-
 make_combined_figure <- function(region_key, out_prefix) {
   res <- if (region_key == "national") results_national else results_north
-
   raw_grid <- seq(quantile(res$df_work$years_of_schooling, 0.02, na.rm=TRUE),
                    quantile(res$df_work$years_of_schooling, 0.98, na.rm=TRUE), length.out = 60)
 
-  ols_df    <- build_ols_curves(res$models_quad, res$models_lin, res$df_work, raw_grid)
-  forest_df <- build_forest_curve(res$forest, res$plot_cf, raw_grid)
+  ols_df <- build_ols_curves(res$models_quad, res$models_lin, res$df_work, raw_grid)
+  ols_df$spec <- factor(ols_df$spec, levels = c("Quadratic OLS", "Linear OLS"))
+  # CRITICAL FIX: give geom_ribbon its own polygon per (group, spec) combination,
+  # otherwise ggplot merges bands across specs that share the same color.
+  ols_df$grp <- interaction(ols_df$group, ols_df$spec, drop = TRUE)
 
-  all_df <- bind_rows(ols_df, forest_df) %>% arrange(spec, group, years_of_schooling)
-  all_df$spec <- factor(all_df$spec, levels = c("Quadratic OLS", "Linear OLS", "Generalized Random Forest"))
-
-  p <- ggplot(all_df, aes(x = years_of_schooling, y = estimate, color = group, fill = group)) +
-    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.12, color = NA) +
+  p <- ggplot(ols_df, aes(x = years_of_schooling, y = estimate,
+                          color = group, fill = group, group = grp)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15, color = NA) +
     geom_line(aes(linetype = spec), linewidth = 1) +
-    scale_linetype_manual(values = c("Quadratic OLS" = "solid", "Linear OLS" = "dashed",
-                                      "Generalized Random Forest" = "dotted")) +
+    scale_linetype_manual(values = c("Quadratic OLS" = "solid", "Linear OLS" = "dashed")) +
     scale_color_manual(values = c("Not married before 18" = "#2C3E50", "Married before 18" = "#C0392B")) +
     scale_fill_manual(values = c("Not married before 18" = "#2C3E50", "Married before 18" = "#C0392B")) +
     labs(x = "Years of Schooling", y = "Marginal Return to Schooling",
