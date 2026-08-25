@@ -5,19 +5,32 @@ library(tibble)
 
 load("outputs/analysis_results.RData")
 
-find_term <- function(coef_names, must_contain, must_not_contain = NULL) {
+find_one <- function(coef_names, must_contain, must_not_contain = NULL, label = "") {
   hits <- coef_names
   for (pat in must_contain) hits <- hits[grepl(pat, hits, fixed = TRUE)]
   if (!is.null(must_not_contain)) {
     for (pat in must_not_contain) hits <- hits[!grepl(pat, hits, fixed = TRUE)]
   }
   if (length(hits) != 1) {
-    stop("Expected exactly 1 match for pattern (contains: ", paste(must_contain, collapse=", "),
+    stop("[", label, "] Expected exactly 1 match (contains: ", paste(must_contain, collapse=", "),
          "; excludes: ", paste(must_not_contain, collapse=", "), ") but found ", length(hits),
          ": [", paste(hits, collapse=", "), "]. All coef names: [",
          paste(coef_names, collapse=", "), "]")
   }
   hits
+}
+
+# Try a list of candidate search specs in order; return the first that resolves.
+find_flex <- function(coef_names, candidates, label = "") {
+  errs <- character(0)
+  for (cand in candidates) {
+    res <- tryCatch(
+      find_one(coef_names, cand$must, cand$mustnot, label),
+      error = function(e) { errs <<- c(errs, conditionMessage(e)); NULL }
+    )
+    if (!is.null(res)) return(res)
+  }
+  stop("[", label, "] No candidate pattern matched. Attempts:\n", paste(errs, collapse = "\n"))
 }
 
 build_ols_ci_curves <- function(models_quad, models_lin, df_work) {
@@ -29,32 +42,48 @@ build_ols_ci_curves <- function(models_quad, models_lin, df_work) {
   cn_quad <- names(b_quad)
   cn_lin  <- names(b_lin)
 
-  years_q   <- find_term(cn_quad, c("years_c"), c("years_c2", ":"))
-  years2_q  <- find_term(cn_quad, c("years_c2"), c(":"))
-  inter_q   <- find_term(cn_quad, c(":", "child_marriage", "years_c"), c("years_c2"))
+  years_q  <- find_flex(cn_quad, list(
+    list(must = c("years_c"), mustnot = c("years_c2", ":"))
+  ), "quad: years")
+  years2_q <- find_flex(cn_quad, list(
+    list(must = c("years_c2"), mustnot = c(":"))
+  ), "quad: years^2")
+  inter_q  <- find_flex(cn_quad, list(
+    list(must = c(":", "child_marriage", "years_c"), mustnot = c("years_c2"))
+  ), "quad: interaction")
 
-  years_l   <- find_term(cn_lin, c("years_c"), c(":"))
-  inter_l   <- find_term(cn_lin, c(":", "child_marriage", "years_c"))
+  years_l  <- find_flex(cn_lin, list(
+    list(must = c("years_c"),          mustnot = c(":", "2")),
+    list(must = c("years_of_schooling"), mustnot = c(":"))
+  ), "lin: years")
+  inter_l  <- find_flex(cn_lin, list(
+    list(must = c(":", "child_marriage", "years_c"),          mustnot = character(0)),
+    list(must = c(":", "child_marriage", "years_of_schooling"), mustnot = character(0))
+  ), "lin: interaction")
 
-  message(">>> Quadratic terms used: years=", years_q, " years2=", years2_q, " interaction=", inter_q)
-  message(">>> Linear terms used: years=", years_l, " interaction=", inter_l)
+  message(">>> Quadratic terms: years=", years_q, " years2=", years2_q, " interaction=", inter_q)
+  message(">>> Linear terms: years=", years_l, " interaction=", inter_l)
 
+  # Quadratic model is mean-centered (years_c); linear model uses raw years_of_schooling.
+  quad_is_centered <- grepl("^years_c$", years_q)
   mean_years <- mean(df_work$years_of_schooling, na.rm = TRUE)
-  S_grid <- seq(
-    quantile(df_work$years_of_schooling, 0.02, na.rm = TRUE) - mean_years,
-    quantile(df_work$years_of_schooling, 0.98, na.rm = TRUE) - mean_years,
+
+  raw_grid <- seq(
+    quantile(df_work$years_of_schooling, 0.02, na.rm = TRUE),
+    quantile(df_work$years_of_schooling, 0.98, na.rm = TRUE),
     length.out = 60
   )
+  S_grid_quad <- if (quad_is_centered) raw_grid - mean_years else raw_grid
 
   quad_curve <- function(g) {
-    est <- b_quad[years_q] + 2 * b_quad[years2_q] * S_grid + b_quad[inter_q] * g
-    se  <- sapply(S_grid, function(S) {
+    est <- b_quad[years_q] + 2 * b_quad[years2_q] * S_grid_quad + b_quad[inter_q] * g
+    se  <- sapply(S_grid_quad, function(S) {
       v <- c(1, 2 * S, g)
       idx <- c(years_q, years2_q, inter_q)
       sqrt(as.numeric(t(v) %*% V_quad[idx, idx] %*% v))
     })
     tibble(
-      years_of_schooling = S_grid + mean_years,
+      years_of_schooling = raw_grid,
       estimate = as.numeric(est), se = se,
       ci_lower = as.numeric(est) - 1.96 * se, ci_upper = as.numeric(est) + 1.96 * se,
       group = ifelse(g == 1, "Married before 18", "Not married before 18"),
@@ -68,7 +97,7 @@ build_ols_ci_curves <- function(models_quad, models_lin, df_work) {
     v <- c(1, g)
     se <- sqrt(as.numeric(t(v) %*% V_lin[idx, idx] %*% v))
     tibble(
-      years_of_schooling = S_grid + mean_years,
+      years_of_schooling = raw_grid,
       estimate = est, se = se,
       ci_lower = est - 1.96 * se, ci_upper = est + 1.96 * se,
       group = ifelse(g == 1, "Married before 18", "Not married before 18"),
