@@ -228,7 +228,7 @@ if (!is.null(nat$probit_me) && !is.null(nth$probit_me)) {
 # Combined CF summary: ATE + Variable Importance for both regions
 ate_combined <- tibble(
   Region = c("National", "Northern Nigeria"),
-  ATE = c(sprintf("%.3f", nat$ate["estimate"]), sprintf("%.3f", nth$ate["estimate"])),
+  `Conditional Association` = c(sprintf("%.3f", nat$ate["estimate"]), sprintf("%.3f", nth$ate["estimate"])),
   `Std. Error` = c(sprintf("%.3f", nat$ate["std.err"]), sprintf("%.3f", nth$ate["std.err"])),
   `Return (%)` = c(sprintf("%.1f%%", nat$ate["estimate"]*100), sprintf("%.1f%%", nth$ate["estimate"]*100))
 )
