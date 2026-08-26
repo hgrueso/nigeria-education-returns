@@ -10,14 +10,13 @@ format:
     number-sections: false
     keep-tex: true
     latex-auto-install: true
-    include-before-body:
-      text: |
-        \renewcommand{\listtablename}{List of Tables}
-        \renewcommand{\listfigurename}{List of Figures}
-        \listoftables
-        \newpage
-        \listoffigures
-        \newpage
+    include-before-body: |
+      \renewcommand{\listtablename}{List of Tables}
+      \renewcommand{\listfigurename}{List of Figures}
+      \listoftables
+      \newpage
+      \listoffigures
+      \newpage
     header-includes: |
       \usepackage{booktabs}
       \usepackage{longtable}
@@ -225,7 +224,7 @@ if (!is.null(nat$probit_me) && !is.null(nth$probit_me)) {
 \newpage
 
 ```{r}
-# Combined CF summary: ATE + Variable Importance for both regions
+# Combined GRF summary: conditional association + Variable Importance for both regions
 ate_combined <- tibble(
   Region = c("National", "Northern Nigeria"),
   `Conditional Association` = c(sprintf("%.3f", nat$ate["estimate"]), sprintf("%.3f", nth$ate["estimate"])),
@@ -351,7 +350,7 @@ ggsave("outputs/fig_a6.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) 
 
 \begin{figure}[H]
 \centering
-\caption{Returns Across Methods -- National. Marginal returns to schooling from quadratic OLS (solid) and linear OLS (dashed), each with 95\% confidence bands (delta method). Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\caption{Returns Across Methods -- National. Marginal returns to schooling from quadratic OLS (solid), linear OLS (dashed), and generalized random forest (dotted), each with 95\% confidence bands. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig03_national_ols_ci.pdf}
 \end{figure}
 
@@ -359,7 +358,7 @@ ggsave("outputs/fig_a6.pdf", nth$p_cf_scatter + labs(title=NULL, subtitle=NULL) 
 
 \begin{figure}[H]
 \centering
-\caption{Returns Across Methods -- Northern Nigeria. Marginal returns to schooling from quadratic OLS (solid) and linear OLS (dashed), each with 95\% confidence bands (delta method). Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
+\caption{Returns Across Methods -- Northern Nigeria. Marginal returns to schooling from quadratic OLS (solid), linear OLS (dashed), and generalized random forest (dotted), each with 95\% confidence bands. Blue = not married before 18; Red = married before 18. Source: NLSS 2018-19.}
 \includegraphics[width=\textwidth]{outputs/fig04_north_ols_ci.pdf}
 \end{figure}
 
